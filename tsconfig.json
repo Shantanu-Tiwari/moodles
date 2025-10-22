@@ -1,11 +1,6 @@
 {
   "compilerOptions": {
-    "target": "ES2017",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "noImplicitAny": false,
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -26,9 +21,16 @@
       "@/*": [
         "./*"
       ]
-    }
+    },
+    "target": "ES2017",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ]
   },
   "include": [
+    "types",
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",

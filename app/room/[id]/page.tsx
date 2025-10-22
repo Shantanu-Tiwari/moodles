@@ -10,11 +10,12 @@ import Peer from "simple-peer"
 let socket: Socket
 
 export default function RoomPage() {
+    type LineData = { points: number[]; color: string; strokeWidth: number };
     const { id } = useParams()
     const searchParams = useSearchParams()
     const username = searchParams.get("username")
 
-    const [lines, setLines] = useState<any[]>([])
+    const [lines, setLines] = useState<LineData[]>([])
     const [isDrawing, setIsDrawing] = useState(false)
     const [users, setUsers] = useState<string[]>([])
     const [isMuted, setIsMuted] = useState(false)
