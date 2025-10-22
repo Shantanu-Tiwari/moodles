@@ -44,6 +44,10 @@ io.on("connection", (socket) => {
         // Broadcast updated user list
         io.to(roomId).emit("usersUpdate", rooms[roomId].users.map((u) => u.name))
 
+        // Send existing user IDs to new user for reconnection
+        const existingUserIds = rooms[roomId].users.filter(u => u.id !== socket.id).map(u => u.id)
+        socket.emit("existingUsers", existingUserIds)
+
         // Notify existing users that a new user joined (for WebRTC)
         socket.to(roomId).emit("user-joined", socket.id)
 
@@ -67,6 +71,11 @@ io.on("connection", (socket) => {
     // WebRTC signaling for voice chat
     socket.on("signal", ({ to, from, signal }) => {
         socket.to(to).emit("signal", { from, signal })
+    })
+
+    // Speaking status broadcast
+    socket.on("speaking", ({ roomId, username, speaking }) => {
+        socket.to(roomId).emit("speakingUpdate", { username, speaking })
     })
 
     // When user leaves/disconnects

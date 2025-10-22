@@ -46,6 +46,9 @@ export default function RoomPage() {
         socket.on("draw", (newLine) => setLines((prev) => [...prev, newLine]))
         socket.on("clearCanvas", () => setLines([]))
         socket.on("usersUpdate", (userList) => setUsers(userList))
+        socket.on("speakingUpdate", ({ username: speakingUser, speaking }) => {
+            setSpeakingUsers(prev => ({ ...prev, [speakingUser]: speaking }))
+        })
 
         // --- VOICE CHAT EVENTS ---
         socket.on("user-joined", (userId) => {
@@ -53,6 +56,16 @@ export default function RoomPage() {
                 const peer = createPeer(userId, socket.id, userStream.current)
                 peersRef.current[userId] = peer
             }
+        })
+        
+        // Reconnect to existing users on reload
+        socket.on("existingUsers", (userIds) => {
+            userIds.forEach((userId: string) => {
+                if (userId !== socket.id && userStream.current) {
+                    const peer = createPeer(userId, socket.id!, userStream.current)
+                    peersRef.current[userId] = peer
+                }
+            })
         })
 
         socket.on("signal", ({ from, signal }) => {
@@ -179,11 +192,20 @@ export default function RoomPage() {
         const source = audioCtx.createMediaStreamSource(stream)
         const data = new Uint8Array(analyser.frequencyBinCount)
         source.connect(analyser)
+        
+        let lastSpeaking = false
 
         const loop = () => {
             analyser.getByteFrequencyData(data)
             const volume = data.reduce((a, b) => a + b, 0) / data.length
-            setSpeakingUsers((prev) => ({ ...prev, [name]: volume > 20 }))
+            const speaking = volume > 20
+            
+            if (speaking !== lastSpeaking) {
+                setSpeakingUsers((prev) => ({ ...prev, [name]: speaking }))
+                socketRef.current?.emit("speaking", { roomId: id, username: name, speaking })
+                lastSpeaking = speaking
+            }
+            
             requestAnimationFrame(loop)
         }
         loop()
