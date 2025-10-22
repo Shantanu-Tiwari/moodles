@@ -9,7 +9,7 @@ app.use(cors())
 const server = createServer(app)
 const io = new Server(server, {
     cors: {
-        origin: "http://localhost:3000",
+        origin: ["http://localhost:3000", "https://moodles-seven.vercel.app"],
         methods: ["GET", "POST"],
     },
 })
@@ -78,4 +78,5 @@ io.on("connection", (socket) => {
     })
 })
 
-server.listen(3001, () => console.log("🚀 Socket server running on port 3001"))
+const PORT = process.env.PORT || 3001
+server.listen(PORT, () => console.log(`🚀 Socket server running on port ${PORT}`))
