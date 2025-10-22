@@ -80,14 +80,22 @@ export default function RoomPage() {
     // --- PEER HELPERS ---
     function createPeer(userToSignal: string, callerId: string, stream: MediaStream) {
         const peer = new Peer({ initiator: true, trickle: false, stream })
-        peer.on("signal", (signal) => socket.emit("signal", { to: userToSignal, from: callerId, signal }))
+        peer.on("signal", (signal) => {
+            if (socket.id) {
+                socket.emit("signal", { to: userToSignal, from: callerId, signal })
+            }
+        })
         peer.on("stream", (remoteStream) => addAudio(remoteStream, userToSignal))
         return peer
     }
 
     function addPeer(incomingSignal: Peer.SignalData, fromId: string, stream: MediaStream) {
         const peer = new Peer({ initiator: false, trickle: false, stream })
-        peer.on("signal", (signal) => socket.emit("signal", { to: fromId, from: socket.id, signal }))
+        peer.on("signal", (signal) => {
+            if (socket.id) {
+                socket.emit("signal", { to: fromId, from: socket.id, signal })
+            }
+        })
         peer.on("stream", (remoteStream) => addAudio(remoteStream, fromId))
         peer.signal(incomingSignal)
         return peer
@@ -164,29 +172,30 @@ export default function RoomPage() {
 
             <div className="flex flex-col md:flex-row flex-1">
                 <div className="flex-1 flex flex-col justify-center items-center">
-                    <Stage
-                        width={800}
-                        height={600}
-                        ref={stageRef}
-                        onMouseDown={handleMouseDown}
-                        onMousemove={handleMouseMove}
-                        onMouseup={handleMouseUp}
-                        className="bg-white rounded-2xl shadow-xl"
-                    >
-                        <Layer>
-                            {lines.map((line, i) => (
-                                <Line
-                                    key={i}
-                                    points={line.points}
-                                    stroke={line.color}
-                                    strokeWidth={line.strokeWidth}
-                                    tension={0.5}
-                                    lineCap="round"
-                                    lineJoin="round"
-                                />
-                            ))}
-                        </Layer>
-                    </Stage>
+                    <div className="bg-white rounded-2xl shadow-xl">
+                        <Stage
+                            width={800}
+                            height={600}
+                            ref={stageRef}
+                            onMouseDown={handleMouseDown}
+                            onMousemove={handleMouseMove}
+                            onMouseup={handleMouseUp}
+                        >
+                            <Layer>
+                                {lines.map((line, i) => (
+                                    <Line
+                                        key={i}
+                                        points={line.points}
+                                        stroke={line.color}
+                                        strokeWidth={line.strokeWidth}
+                                        tension={0.5}
+                                        lineCap="round"
+                                        lineJoin="round"
+                                    />
+                                ))}
+                            </Layer>
+                        </Stage>
+                    </div>
 
                     <div className="flex gap-4 mt-4">
                         <Button onClick={clearCanvas} className="bg-yellow-500 hover:bg-yellow-600">
