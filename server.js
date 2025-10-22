@@ -44,6 +44,9 @@ io.on("connection", (socket) => {
         // Broadcast updated user list
         io.to(roomId).emit("usersUpdate", rooms[roomId].users.map((u) => u.name))
 
+        // Notify existing users that a new user joined (for WebRTC)
+        socket.to(roomId).emit("user-joined", socket.id)
+
         console.log(`👥 ${username} joined room ${roomId}`)
     })
 
@@ -61,10 +64,18 @@ io.on("connection", (socket) => {
         io.to(roomId).emit("clearCanvas")
     })
 
+    // WebRTC signaling for voice chat
+    socket.on("signal", ({ to, from, signal }) => {
+        socket.to(to).emit("signal", { from, signal })
+    })
+
     // When user leaves/disconnects
     socket.on("disconnect", () => {
         const { roomId, username } = socket.data || {}
         if (!roomId || !rooms[roomId]) return
+
+        // Notify other users that this user left (for WebRTC cleanup)
+        socket.to(roomId).emit("user-left", socket.id)
 
         rooms[roomId].users = rooms[roomId].users.filter((u) => u.id !== socket.id)
         io.to(roomId).emit("usersUpdate", rooms[roomId].users.map((u) => u.name))
