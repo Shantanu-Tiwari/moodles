@@ -7,8 +7,6 @@ import { Stage, Layer, Line } from "react-konva"
 import { Button } from "@/components/ui/button"
 import Peer from "simple-peer"
 
-let socket: Socket | null = null
-
 export default function RoomPage() {
     type LineData = { points: number[]; color: string; strokeWidth: number };
     const { id } = useParams()
@@ -22,6 +20,7 @@ export default function RoomPage() {
     const [speakingUsers, setSpeakingUsers] = useState<Record<string, boolean>>({})
 
     const stageRef = useRef<any>(null)
+    const socketRef = useRef<Socket | null>(null)
     const peersRef = useRef<Record<string, Peer.Instance>>({})
     const audioRefs = useRef<Record<string, HTMLAudioElement>>({})
     const userStream = useRef<MediaStream | null>(null)
@@ -29,17 +28,19 @@ export default function RoomPage() {
     // --- SOCKET SETUP + DRAWING ---
     useEffect(() => {
         // Clean up existing socket
-        if (socket) {
-            socket.disconnect()
+        if (socketRef.current) {
+            socketRef.current.disconnect()
         }
         
         // Create new socket connection
-        socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3001", { 
+        socketRef.current = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3001", { 
             transports: ["polling", "websocket"],
             upgrade: true,
             forceNew: true
         })
-        socket.emit("joinRoom", { roomId: id, username })
+        socketRef.current.emit("joinRoom", { roomId: id, username })
+        
+        const socket = socketRef.current
 
         socket.on("initCanvas", (serverLines) => setLines(serverLines))
         socket.on("draw", (newLine) => setLines((prev) => [...prev, newLine]))
@@ -89,9 +90,9 @@ export default function RoomPage() {
         })
 
         const cleanup = () => {
-            if (socket) {
-                socket.disconnect()
-                socket = null
+            if (socketRef.current) {
+                socketRef.current.disconnect()
+                socketRef.current = null
             }
             // Clean up peers
             Object.values(peersRef.current).forEach(peer => peer.destroy())
@@ -124,8 +125,8 @@ export default function RoomPage() {
             }
         })
         peer.on("signal", (signal) => {
-            if (socket?.id) {
-                socket.emit("signal", { to: userToSignal, from: callerId, signal })
+            if (socketRef.current?.id) {
+                socketRef.current.emit("signal", { to: userToSignal, from: callerId, signal })
             }
         })
         peer.on("stream", (remoteStream) => addAudio(remoteStream, userToSignal))
@@ -145,8 +146,8 @@ export default function RoomPage() {
             }
         })
         peer.on("signal", (signal) => {
-            if (socket?.id) {
-                socket.emit("signal", { to: fromId, from: socket.id, signal })
+            if (socketRef.current?.id) {
+                socketRef.current.emit("signal", { to: fromId, from: socketRef.current.id, signal })
             }
         })
         peer.on("stream", (remoteStream) => addAudio(remoteStream, fromId))
@@ -204,12 +205,12 @@ export default function RoomPage() {
         lastLine.points = lastLine.points.concat([point.x, point.y])
         const newLines = lines.slice(0, lines.length - 1).concat(lastLine)
         setLines(newLines)
-        socket?.emit("draw", { roomId: id, newLine: lastLine })
+        socketRef.current?.emit("draw", { roomId: id, newLine: lastLine })
     }
 
     const handleMouseUp = () => setIsDrawing(false)
 
-    const clearCanvas = () => socket?.emit("clearCanvas", id)
+    const clearCanvas = () => socketRef.current?.emit("clearCanvas", id)
 
     return (
         <main className="flex flex-col min-h-screen bg-gradient-to-br from-yellow-200 via-orange-200 to-pink-200">
@@ -256,7 +257,7 @@ export default function RoomPage() {
                         </Button>
                         <Button
                             onClick={() => {
-                                socket?.disconnect()
+                                socketRef.current?.disconnect()
                                 window.location.href = "/"
                             }}
                             className="bg-red-500 hover:bg-red-600"
