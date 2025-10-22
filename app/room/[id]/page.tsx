@@ -43,7 +43,17 @@ export default function RoomPage() {
         const socket = socketRef.current
 
         socket.on("initCanvas", (serverLines) => setLines(serverLines))
-        socket.on("draw", (newLine) => setLines((prev) => [...prev, newLine]))
+        socket.on("draw", (newLine) => {
+            setLines((prev) => {
+                // Check if this line already exists to prevent duplicates
+                const exists = prev.some(line => 
+                    line.points.length === newLine.points.length &&
+                    line.points[0] === newLine.points[0] &&
+                    line.points[1] === newLine.points[1]
+                )
+                return exists ? prev : [...prev, newLine]
+            })
+        })
         socket.on("clearCanvas", () => setLines([]))
         socket.on("usersUpdate", (userList) => setUsers(userList))
         socket.on("speakingUpdate", ({ username: speakingUser, speaking }) => {
@@ -217,17 +227,21 @@ export default function RoomPage() {
         const pos = e.target.getStage().getPointerPosition()
         const newLine = { points: [pos.x, pos.y], color: "black", strokeWidth: 3 }
         setLines((prev) => [...prev, newLine])
+        socketRef.current?.emit("draw", { roomId: id, newLine })
     }
 
     const handleMouseMove = (e: any) => {
         if (!isDrawing) return
         const stage = e.target.getStage()
         const point = stage.getPointerPosition()
-        const lastLine = lines[lines.length - 1]
-        lastLine.points = lastLine.points.concat([point.x, point.y])
-        const newLines = lines.slice(0, lines.length - 1).concat(lastLine)
-        setLines(newLines)
-        socketRef.current?.emit("draw", { roomId: id, newLine: lastLine })
+        
+        setLines(prev => {
+            const newLines = [...prev]
+            const lastLine = { ...newLines[newLines.length - 1] }
+            lastLine.points = [...lastLine.points, point.x, point.y]
+            newLines[newLines.length - 1] = lastLine
+            return newLines
+        })
     }
 
     const handleMouseUp = () => setIsDrawing(false)

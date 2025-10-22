@@ -32,11 +32,10 @@ io.on("connection", (socket) => {
             }
         }
 
-        // Avoid duplicates
-        const existing = rooms[roomId].users.find((u) => u.id === socket.id)
-        if (!existing) {
-            rooms[roomId].users.push({ id: socket.id, name: username })
-        }
+        // Remove any existing user with same name (reconnection)
+        rooms[roomId].users = rooms[roomId].users.filter((u) => u.name !== username)
+        // Add current user
+        rooms[roomId].users.push({ id: socket.id, name: username })
 
         // Send all existing lines to new user
         socket.emit("initCanvas", rooms[roomId].lines)
@@ -57,7 +56,7 @@ io.on("connection", (socket) => {
     // When user draws
     socket.on("draw", ({ roomId, newLine }) => {
         if (rooms[roomId]) {
-            rooms[roomId].lines.push(newLine) // store persistent drawing
+            rooms[roomId].lines.push(newLine)
             socket.to(roomId).emit("draw", newLine)
         }
     })
