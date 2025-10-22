@@ -69,7 +69,7 @@ export default function HomePage() {
           </div>
 
           <p className="mt-6 text-sm text-gray-500">
-            Built with ❤️ using Next.js + Socket.io + WebRTC
+            Built by Shantanu Tiwarig using Next.js + Socket.io + WebRTC
           </p>
         </div>
       </main>
