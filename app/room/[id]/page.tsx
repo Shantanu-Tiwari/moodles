@@ -68,7 +68,15 @@ export default function RoomPage() {
         })
 
         // --- MIC ACCESS ---
-        navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+        navigator.mediaDevices.getUserMedia({ 
+            audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+                sampleRate: 48000,
+                channelCount: 1
+            }
+        }).then((stream) => {
             userStream.current = stream
             detectSpeaking(stream, username || "You")
         })
@@ -83,7 +91,17 @@ export default function RoomPage() {
 
     // --- PEER HELPERS ---
     function createPeer(userToSignal: string, callerId: string, stream: MediaStream) {
-        const peer = new Peer({ initiator: true, trickle: false, stream })
+        const peer = new Peer({ 
+            initiator: true, 
+            trickle: false, 
+            stream,
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:global.stun.twilio.com:3478' }
+                ]
+            }
+        })
         peer.on("signal", (signal) => {
             if (socket.id) {
                 socket.emit("signal", { to: userToSignal, from: callerId, signal })
@@ -94,7 +112,17 @@ export default function RoomPage() {
     }
 
     function addPeer(incomingSignal: Peer.SignalData, fromId: string, stream: MediaStream) {
-        const peer = new Peer({ initiator: false, trickle: false, stream })
+        const peer = new Peer({ 
+            initiator: false, 
+            trickle: false, 
+            stream,
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:global.stun.twilio.com:3478' }
+                ]
+            }
+        })
         peer.on("signal", (signal) => {
             if (socket.id) {
                 socket.emit("signal", { to: fromId, from: socket.id, signal })
