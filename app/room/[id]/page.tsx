@@ -37,7 +37,7 @@ export default function RoomPage() {
 
         // --- VOICE CHAT EVENTS ---
         socket.on("user-joined", (userId) => {
-            if (userStream.current) {
+            if (userStream.current && socket.id) {
                 const peer = createPeer(userId, socket.id, userStream.current)
                 peersRef.current[userId] = peer
             }
