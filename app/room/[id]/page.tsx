@@ -28,7 +28,10 @@ export default function RoomPage() {
 
     // --- SOCKET SETUP + DRAWING ---
     useEffect(() => {
-        socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3001", { transports: ["websocket"] })
+        socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3001", { 
+            transports: ["polling", "websocket"],
+            upgrade: true
+        })
         socket.emit("joinRoom", { roomId: id, username })
 
         socket.on("initCanvas", (serverLines) => setLines(serverLines))

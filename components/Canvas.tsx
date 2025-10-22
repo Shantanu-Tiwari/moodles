@@ -4,7 +4,10 @@ import { useRef, useState, useEffect } from "react";
 import io from "socket.io-client";
 
 let socket: any;
-if (!socket) socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3001");
+if (!socket) socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3001", {
+    transports: ["polling", "websocket"],
+    upgrade: true
+});
 
 export default function Canvas({ roomId }: { roomId: string }) {
     const [lines, setLines] = useState<any[]>([]);
