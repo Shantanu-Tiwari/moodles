@@ -1,0 +1,81 @@
+import express from "express"
+import { createServer } from "http"
+import { Server } from "socket.io"
+import cors from "cors"
+
+const app = express()
+app.use(cors())
+
+const server = createServer(app)
+const io = new Server(server, {
+    cors: {
+        origin: "http://localhost:3000",
+        methods: ["GET", "POST"],
+    },
+})
+
+// Persistent in-memory room store
+const rooms = {}
+
+io.on("connection", (socket) => {
+    console.log("🟢 New client connected:", socket.id)
+
+    socket.on("joinRoom", ({ roomId, username }) => {
+        socket.join(roomId)
+        socket.data = { roomId, username }
+
+        // Create room if doesn't exist
+        if (!rooms[roomId]) {
+            rooms[roomId] = {
+                users: [],
+                lines: [],
+            }
+        }
+
+        // Avoid duplicates
+        const existing = rooms[roomId].users.find((u) => u.id === socket.id)
+        if (!existing) {
+            rooms[roomId].users.push({ id: socket.id, name: username })
+        }
+
+        // Send all existing lines to new user
+        socket.emit("initCanvas", rooms[roomId].lines)
+
+        // Broadcast updated user list
+        io.to(roomId).emit("usersUpdate", rooms[roomId].users.map((u) => u.name))
+
+        console.log(`👥 ${username} joined room ${roomId}`)
+    })
+
+    // When user draws
+    socket.on("draw", ({ roomId, newLine }) => {
+        if (rooms[roomId]) {
+            rooms[roomId].lines.push(newLine) // store persistent drawing
+            socket.to(roomId).emit("draw", newLine)
+        }
+    })
+
+    // When user clears canvas
+    socket.on("clearCanvas", (roomId) => {
+        if (rooms[roomId]) rooms[roomId].lines = []
+        io.to(roomId).emit("clearCanvas")
+    })
+
+    // When user leaves/disconnects
+    socket.on("disconnect", () => {
+        const { roomId, username } = socket.data || {}
+        if (!roomId || !rooms[roomId]) return
+
+        rooms[roomId].users = rooms[roomId].users.filter((u) => u.id !== socket.id)
+        io.to(roomId).emit("usersUpdate", rooms[roomId].users.map((u) => u.name))
+        console.log(`🔴 ${username || "User"} disconnected from ${roomId}`)
+
+        // Optional cleanup if room empty
+        if (rooms[roomId].users.length === 0) {
+            delete rooms[roomId]
+            console.log(`🧹 Room ${roomId} deleted (empty).`)
+        }
+    })
+})
+
+server.listen(3001, () => console.log("🚀 Socket server running on port 3001"))
